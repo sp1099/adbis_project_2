@@ -7,7 +7,10 @@ class DataPreprocessor():
     def __init__(self, data_path, properties):
         self.data_path = data_path
         self.properties = properties
-        self.partion_tables = {property: PropertyTable() for property in properties}
+        self.partion_tables_string = {property: PropertyTable() for property in properties}
+        self.partion_tables_int = {property_name: defaultdict(list) for property_name in properties}
+        self.rdf_dict = defaultdict()
+        self.rdf_dict_reversed = defaultdict()
 
 
     def partition_data(self):
@@ -21,8 +24,12 @@ class DataPreprocessor():
                 property = self.remove_prefix(property)
                 object = self.remove_prefix(object)
 
-                if property in self.partion_tables:
-                    self.partion_tables[property].insert(subject, object)
+                if property in self.partion_tables_string:
+                    self.partion_tables_string[property].insert(subject, object)
+                    
+                    self.add_to_dict(subject, object)
+                    subject_int, object_int = self.rdf_dict[subject], self.rdf_dict[object]
+                    self.partion_tables_int[property][object_int].append(subject_int)
 
         # print(self.partion_tables)
 
@@ -36,6 +43,16 @@ class DataPreprocessor():
             return string
         else:
             return string[string.find(':') + 1:]
+        
+    def add_to_dict(self, subject, object):
+        if subject not in self.rdf_dict:
+            self.rdf_dict[subject] = len(self.rdf_dict) + 1
+        if object not in self.rdf_dict:
+            self.rdf_dict[object] = len(self.rdf_dict) + 1
+
+    def reverse_dict(self):
+        for key, value in self.rdf_dict.items():
+            self.rdf_dict_reversed[value] = key
 
 
 if __name__ == '__main__':
