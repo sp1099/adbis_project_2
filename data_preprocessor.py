@@ -7,10 +7,12 @@ class DataPreprocessor():
     def __init__(self, data_path, properties):
         self.data_path = data_path
         self.properties = properties
-        self.partion_tables_string = {property: PropertyTable() for property in properties}
         self.partion_tables_int = {property_name: defaultdict(list) for property_name in properties}
         self.rdf_dict = defaultdict()
         self.rdf_dict_reversed = defaultdict()
+
+        self.partition_data()
+        self.reverse_dict()
 
 
     def partition_data(self):
@@ -24,9 +26,7 @@ class DataPreprocessor():
                 property = self.remove_prefix(property)
                 object = self.remove_prefix(object)
 
-                if property in self.partion_tables_string:
-                    self.partion_tables_string[property].insert(subject, object)
-                    
+                if property in self.properties:
                     self.add_to_dict(subject, object)
                     subject_int, object_int = self.rdf_dict[subject], self.rdf_dict[object]
                     self.partion_tables_int[property][object_int].append(subject_int)
