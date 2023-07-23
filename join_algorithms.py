@@ -2,16 +2,32 @@ from collections import defaultdict
 import time
 import sys
 
-from data_structures import HashMap, PropertyTable
+from data_structures import HashMap
+from data_preprocessor import DataPreprocessor
 
 class JoinAlgorithm():
-    def __init__(self, algorithm_type, preprocessor, output_path, use_yannakis):
+    def __init__(self, algorithm_type, preprocessor : DataPreprocessor, output_path, use_yannakis):
+        """
+        Initialize the join algorithm
+
+        Parameters
+        ----------
+        algorithm_type : str
+            Type of the join algorithm
+        preprocessor : DataPreprocessor
+            Preprocessor that contains the property tables
+        output_path : str   
+            Path to the output file
+        use_yannakis : bool
+            If True, yannakis algorithm is used
+        """
         self.algorithm_type = algorithm_type
         self.output_path = output_path
-        self.partition_tables_int = preprocessor.partion_tables_int
+        self.property_tables_int = preprocessor.property_tables_int
         self.rdf_dict = preprocessor.rdf_dict_reversed
 
-        self.reverse_index(use_yannakis)
+        # map the objects to the subjects of the property tables
+        self.map_objects_to_subjects(use_yannakis)
 
     def run(self):
         print("Start running hash join")
@@ -29,32 +45,43 @@ class JoinAlgorithm():
         print("Time: ", end_time - start_time)
 
 
-    def reverse_index(self, use_yannakis):
-        # reverse the index of oject_of_hasReview
+    def map_objects_to_subjects(self, use_yannakis):
+        """
+        Create a dictionary for each property table so that it contains the subjects as keys and a list of objects as values
+        This is done for the property tables follows, likes, friendOf and hasReview
+        The property table hasReview is not handled specially with yannakis because it is the last property table in the query
 
+        Parameters
+        ----------
+        use_yannakis : bool
+            If True, the property tables of a join are already filtered based on if the object of the first property table of the join is present as a subject in the second property table of the join
+            This is done to reduce the size of the property tables and therefore the memory usage and time
+        """
+
+        # build the property table for hasReview
         self.subjects_of_hasReview = defaultdict(set)
-        for obj, subjects in self.partition_tables_int['hasReview'].items():
+        for obj, subjects in self.property_tables_int['hasReview'].items():
             for subj in subjects:
                 self.subjects_of_hasReview[subj].add(obj)
 
-        # reverse the index of object_of_likes considering the relation
-        # hasReview.subject = likes.object
-
+        # build the property table for likes considering the relation
+        # likes.object = hasReview.subject
         self.subjects_of_likes = defaultdict(set)
-        for obj, subjects in self.partition_tables_int['likes'].items():
+        for obj, subjects in self.property_tables_int['likes'].items():
             if use_yannakis:
+                # check if the object of likes is a subject of hasReview (all done for the indices)
                 if obj in self.subjects_of_hasReview:
+                    # if yes, add these subjects of likes as keys to the dictionary and the object as value
                     for subj in subjects:
                         self.subjects_of_likes[subj].add(obj)
             else:
                 for subj in subjects:
                     self.subjects_of_likes[subj].add(obj)
 
-        # reverse the index of object_of_friendOf considering the relation
-        # likes.subject = friendOf.object
-
+        # build the property table for friendOf considering the relation
+        # friendOf.object = likes.subject
         self.subjects_of_friendOf = defaultdict(set)
-        for obj, subjects in self.partition_tables_int['friendOf'].items():
+        for obj, subjects in self.property_tables_int['friendOf'].items():
             if use_yannakis:
                 if obj in self.subjects_of_likes:
                     for subj in subjects:
@@ -63,11 +90,10 @@ class JoinAlgorithm():
                 for subj in subjects:
                     self.subjects_of_friendOf[subj].add(obj)
 
-        # get the surviving objects of follows considering the relation
+        # build the property table for follows considering the relation
         # friendOf.subject = follows.object
-
         self.objects_of_follows = set()
-        for obj, subjects in self.partition_tables_int['follows'].items():
+        for obj, subjects in self.property_tables_int['follows'].items():
             if use_yannakis:
                 if obj in self.subjects_of_friendOf:
                     self.objects_of_follows.add(obj)
@@ -76,40 +102,86 @@ class JoinAlgorithm():
 
 
     def hash_join(self):
+        """
+        Hash join for the query of the assignment
+        """
         print("Start running hash join")
         start_time = time.time()
+        # first join: follows.object = friendOf.subject
         objects_of_friendsOf = self.hash_join_single(self.objects_of_follows, self.subjects_of_friendOf)
+        # second join: first join resulting objects = likes.subject
         objects_of_likes = self.hash_join_single(objects_of_friendsOf, self.subjects_of_likes)
+        # third join: second join resulting objects = hasReview.subject
         objects_of_hasReview = self.hash_join_single(objects_of_likes, self.subjects_of_hasReview)
         end_time = time.time()
         print("Finish running")
         print("Time: ", end_time - start_time)
         print("Size in GB: ", sys.getsizeof(objects_of_hasReview) / 1000 / 1000 / 1000)
 
+        # TODO: UNCOMMENT THIS LINE TO WRITE THE RESULTS TO A FILE
         # self.collect_results(objects_of_hasReview)
 
-    def hash_join_single(self, objects, subjects_objects):
-        # build hash table
+    def hash_join_single(self, objects_from_left_join_table, subjects_objects_of_right_join_table):
+        """
+        Hash join for a single property table
+
+        Parameters
+        ----------
+        objects : set
+            Property table that should be joined and will be used as hash table
+        subjects_objects : dict
+            Property table that should be joined
+
+        Returns
+        -------
+        result : set
+            Result of the hash join
+
+        """
+
+        # create a hash table for the property table given in objects
         hash_table = HashMap()
-        for object in objects:
+        for object in objects_from_left_join_table:
+            # calculate the hash of the object
             hash = self.hash_function(object)
+            # insert the object with hash into the hash table
             hash_table.insert(hash, object)
 
         # probe hash table
         result = set()
-        for subject, objects in subjects_objects.items():
+        # iterate over the subjects and objects of the property table (subjects_objects) that should be joined
+        for subject, objects_from_right_join_table in subjects_objects_of_right_join_table.items():
+            # calculate the hash of the subject
             hash = self.hash_function(subject)
+            # get the objects of the hash table with the same hash
             hashed_objects = hash_table.get(hash)
+            # if the actual subject index is in the returned list associated with the hash (because of hash collisions)
             if subject in hashed_objects:
-                result.update(objects)
+                # store the objects of the right join table in the result that are given by the join
+                result.update(objects_from_right_join_table)
 
+        # return the result of the hash join (only the objects)
         return result
     
     def hash_function(self, integer):
-        integer = ((integer >> 16) ^ integer) * 0x45d9f3b;
-        integer = ((integer >> 16) ^ integer) * 0x45d9f3b;
-        integer = (integer >> 16) ^ integer;
-        return integer;
+        """
+        Hash function for the hash join (taken from: https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key)
+
+        Parameters
+        ----------
+        integer : int
+            Integer that should be hashed
+
+        Returns
+        -------
+        integer : int
+            Hash of the integer
+
+        """
+        integer = ((integer >> 16) ^ integer) * 0x45d9f3b
+        integer = ((integer >> 16) ^ integer) * 0x45d9f3b
+        integer = (integer >> 16) ^ integer
+        return integer
 
 
     def sort_merge_join(self):
@@ -153,16 +225,28 @@ class JoinAlgorithm():
         return result
     
     def collect_results(self, objects_of_hasReview):
+        """
+        Find the corresponding subjects of the given objects that are results of the join(s)
+        Write the results to a file as requested by the query in the assignment
+
+        Parameters
+        ----------
+        objects_of_hasReview : set
+            Resulting objects of the join(s)
+        """
+
+        # traverse the join results backwards to find the corresponding subjects
+        # this saves a lot of memory because the join results are much smaller than the property tables
         generator = (
-            (followsSubject, followsObject, friendOfObject, likesObject, hasReviewObject)
-            for hasReviewObject in objects_of_hasReview 
-            for likesObject in self.partition_tables_int['hasReview'][hasReviewObject] 
-            for friendOfObject in self.partition_tables_int['likes'][likesObject] 
-            for followsObject in self.partition_tables_int['friendOf'][friendOfObject] 
-            for followsSubject in self.partition_tables_int['follows'][followsObject] 
+            (follows_subject, follows_object, friendOf_object, likes_object, hasReview_object)
+            for hasReview_object in objects_of_hasReview 
+            for likes_object in self.property_tables_int['hasReview'][hasReview_object] 
+            for friendOf_object in self.property_tables_int['likes'][likes_object] 
+            for follows_object in self.property_tables_int['friendOf'][friendOf_object] 
+            for follows_subject in self.property_tables_int['follows'][follows_object] 
         )
 
-
+        # write the results to a file
         with open(self.output_path, 'w') as self.output:
             for element in generator:
                 result = " ".join([self.rdf_dict[singlet] for singlet in element])

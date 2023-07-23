@@ -18,8 +18,8 @@ class DataPreprocessor():
         """
         self.data_path = data_path
         self.properties = properties
-        # partition_tables_int contains for each property a list of objects and for each object a list of subjects (these are the property tables)
-        self.partion_tables_int = {property_name: defaultdict(list) for property_name in properties}
+        # property_tables_int contains for each property a list of objects and for each object a list of subjects
+        self.property_tables_int = {property_name: defaultdict(list) for property_name in properties}
 
         # for each unique subject and for each unique object in the data, the rdf_dict has a unique index
         self.rdf_dict = defaultdict()
@@ -65,7 +65,7 @@ class DataPreprocessor():
                     subject_int, object_int = self.rdf_dict[subject], self.rdf_dict[object]
 
                     # add the subject to the list of subjects of the object in the corresponding property table
-                    self.partion_tables_int[property][object_int].append(subject_int)
+                    self.property_tables_int[property][object_int].append(subject_int)
 
         # print(self.partion_tables)
 
