@@ -185,16 +185,22 @@ class JoinAlgorithm():
 
 
     def sort_merge_join(self):
+        """
+        Sort merge join for the query of the assignment
+        First sort the property tables of the join and then merge them
+        """
         print("Start running sort merge join")
         start_time = time.time()
+
+        # join follows.object = friendOf.subject
         objects_of_friendsOf = self.merge(sorted(self.objects_of_follows), 
                                             sorted(self.subjects_of_friendOf.items(), key=lambda item: item[0]))
 
-        # objects_of_friendsOf = subject of likes
+        # join previous join result object = likes.subject
         objects_of_likes = self.merge(sorted(objects_of_friendsOf), 
                                             sorted(self.subjects_of_likes.items(), key=lambda item: item[0]))
 
-        # objects_of_likes = subjects_of_hasReview
+        # join previous join result object = hasReview.subject
         objects_of_hasReview = self.merge(sorted(objects_of_likes), 
                                                 sorted(self.subjects_of_hasReview.items(), key=lambda item: item[0]))
         end_time = time.time()
@@ -202,25 +208,48 @@ class JoinAlgorithm():
         print("Time: ", end_time - start_time)
         print("Size in GB: ", sys.getsizeof(objects_of_hasReview) / 1000 / 1000 / 1000)
 
+        # TODO: UNCOMMENT THIS LINE TO WRITE THE RESULTS TO A FILE
         # self.collect_results(objects_of_hasReview)
 
     def merge(self, objects, subjects_objects):
+        """
+        Merge two sorted lists
+
+        Parameters
+        ----------
+        objects : list
+            Sorted list of objects
+        subjects_objects : list
+            Sorted list of tuples of subjects and objects
+
+        Returns
+        -------
+        result : set
+            Result of the merge
+        """
         result = set()
-        i, j = 0, 0
+        index_left_table, index_right_table = 0, 0
 
-        while i < len(objects) and j < len(subjects_objects):
+        # iterate over the sorted lists and compare the subject and object integer encodings
+        while index_left_table < len(objects) and index_right_table < len(subjects_objects):
+            # get the subject and object integer encoding of the left and right table given the table indices
+            subj, obj = objects[index_left_table], subjects_objects[index_right_table][0]
 
-            subj, obj = objects[i], subjects_objects[j][0]
+            # check if the subject and object integer encodings are equal
             if subj == obj:
-                result.update(subjects_objects[j][1])
-                i += 1
-                j += 1
+                # if yes, add the objects of the right table to the result
+                result.update(subjects_objects[index_right_table][1])
+                # increase both table indices
+                index_left_table += 1
+                index_right_table += 1
 
+            # check if subject integer encoding is larger than object integer encoding --> increase right table index
             elif subj > obj:
-                j += 1
+                index_right_table += 1
 
+            # increase left table index
             else:
-                i += 1
+                index_left_table += 1
 
         return result
     
