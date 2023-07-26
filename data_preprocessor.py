@@ -1,7 +1,5 @@
 from collections import defaultdict
 
-from data_structures import PropertyTable
-
 class DataPreprocessor():
     
     def __init__(self, data_path, properties):

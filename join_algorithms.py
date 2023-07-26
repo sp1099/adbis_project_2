@@ -43,7 +43,29 @@ class JoinAlgorithm():
         end_time = time.time()
         print("Finish running")
         print("Time: ", end_time - start_time)
+        return end_time - start_time
 
+    def get_info(self):
+        """
+        Get information about the size of property tables
+        Calling this method only returns valid results after map_objects_to_subjects() was called (in init)
+
+        Returns
+        -------
+        size : dict
+            Dictionary that contains the size (size of subjects and objects) of each property table
+        """
+        # get all subjects in the property table follows
+        subjects_of_follows = set(subject for subject_lists in self.property_tables_int['follows'].values() for subject in subject_lists)
+        number_of_subjects_follows = len(subjects_of_follows)
+
+        # return the size of each property table (number of subjects and objects using subjects_of_...)
+        return {
+            'follows': (number_of_subjects_follows, len(self.objects_of_follows)),
+            'friendOf': (len(self.subjects_of_friendOf), sum(len(objects) for objects in self.subjects_of_friendOf.values())),
+            'likes': (len(self.subjects_of_likes), sum(len(objects) for objects in self.subjects_of_likes.values())),
+            'hasReview': (len(self.subjects_of_hasReview), sum(len(objects) for objects in self.subjects_of_hasReview.values())),
+        }
 
     def map_objects_to_subjects(self, use_yannakis):
         """
