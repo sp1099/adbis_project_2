@@ -26,12 +26,3 @@ if __name__ == '__main__':
             size_info = join_algorithm.get_info()
             runtime = join_algorithm.run()
             join_information[f"{algorithm_type}_{'yannakis' if use_yannakis else 'no_yannakis'}"] = (size_info, runtime)
-
-    # plot the join information
-    for algorithm_type in ['hash_join', 'sort_merge_join']:
-        for use_yannakis in [True, False]:
-            size_info, runtime = join_information[f"{algorithm_type}_{'yannakis' if use_yannakis else 'no_yannakis'}"]
-            print(f"Algorithm: {algorithm_type} with Yannakis: {use_yannakis}")
-            print(f"Size info: {size_info}")
-            print(f"Runtime: {runtime}")
-            print()

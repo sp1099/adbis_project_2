@@ -122,6 +122,11 @@ class JoinAlgorithm():
             else:
                 self.objects_of_follows.add(obj)
 
+        print("hasReview:", len(self.subjects_of_hasReview))
+        print("likes:", len(self.subjects_of_likes))
+        print("friendOf:", len(self.subjects_of_friendOf))
+        print("follows:", len(self.objects_of_follows))
+
 
     def hash_join(self):
         """
