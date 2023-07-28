@@ -6,7 +6,7 @@ from data_structures import HashMap
 from data_preprocessor import DataPreprocessor
 
 class JoinAlgorithm():
-    def __init__(self, algorithm_type, preprocessor : DataPreprocessor, output_path, use_yannakis):
+    def __init__(self, algorithm_type, preprocessor : DataPreprocessor, output_path, use_yannakakis):
         """
         Initialize the join algorithm
 
@@ -18,8 +18,8 @@ class JoinAlgorithm():
             Preprocessor that contains the property tables
         output_path : str   
             Path to the output file
-        use_yannakis : bool
-            If True, yannakis algorithm is used
+        use_yannakakis : bool
+            If True, yannakakis algorithm is used
         """
         self.algorithm_type = algorithm_type
         self.output_path = output_path
@@ -27,7 +27,7 @@ class JoinAlgorithm():
         self.rdf_dict = preprocessor.rdf_dict_reversed
 
         # map the objects to the subjects of the property tables
-        self.map_objects_to_subjects(use_yannakis)
+        self.map_objects_to_subjects(use_yannakakis)
 
     def run(self):
         print("Start running hash join")
@@ -67,15 +67,15 @@ class JoinAlgorithm():
             'hasReview': (len(self.subjects_of_hasReview), sum(len(objects) for objects in self.subjects_of_hasReview.values())),
         }
 
-    def map_objects_to_subjects(self, use_yannakis):
+    def map_objects_to_subjects(self, use_yannakakis):
         """
         Create a dictionary for each property table so that it contains the subjects as keys and a list of objects as values
         This is done for the property tables follows, likes, friendOf and hasReview
-        The property table hasReview is not handled specially with yannakis because it is the last property table in the query
+        The property table hasReview is not handled specially with yannakakis because it is the last property table in the query
 
         Parameters
         ----------
-        use_yannakis : bool
+        use_yannakakis : bool
             If True, the property tables of a join are already filtered based on if the object of the first property table of the join is present as a subject in the second property table of the join
             This is done to reduce the size of the property tables and therefore the memory usage and time
         """
@@ -90,7 +90,7 @@ class JoinAlgorithm():
         # likes.object = hasReview.subject
         self.subjects_of_likes = defaultdict(set)
         for obj, subjects in self.property_tables_int['likes'].items():
-            if use_yannakis:
+            if use_yannakakis:
                 # check if the object of likes is a subject of hasReview (all done for the indices)
                 if obj in self.subjects_of_hasReview:
                     # if yes, add these subjects of likes as keys to the dictionary and the object as value
@@ -104,7 +104,7 @@ class JoinAlgorithm():
         # friendOf.object = likes.subject
         self.subjects_of_friendOf = defaultdict(set)
         for obj, subjects in self.property_tables_int['friendOf'].items():
-            if use_yannakis:
+            if use_yannakakis:
                 if obj in self.subjects_of_likes:
                     for subj in subjects:
                         self.subjects_of_friendOf[subj].add(obj)
@@ -116,7 +116,7 @@ class JoinAlgorithm():
         # friendOf.subject = follows.object
         self.objects_of_follows = set()
         for obj, subjects in self.property_tables_int['follows'].items():
-            if use_yannakis:
+            if use_yannakakis:
                 if obj in self.subjects_of_friendOf:
                     self.objects_of_follows.add(obj)
             else:

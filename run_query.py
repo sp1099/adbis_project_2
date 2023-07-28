@@ -19,10 +19,10 @@ if __name__ == '__main__':
 
     # run the join algorithms
     for algorithm_type in ['hash_join', 'sort_merge_join']:
-        for use_yannakis in [True, False]:
-            output_path = f"output/{algorithm_type}_{'yannakis' if use_yannakis else 'no_yannakis'}.txt"
-            print(f"Running {algorithm_type} with Yannakis: {use_yannakis}")
-            join_algorithm = JoinAlgorithm(algorithm_type, data_preprocessor, output_path, use_yannakis)
+        for use_yannakakis in [True, False]:
+            output_path = f"output/{algorithm_type}_{'yannakakis' if use_yannakakis else 'no_yannakakis'}.txt"
+            print(f"Running {algorithm_type} with Yannakakis: {use_yannakakis}")
+            join_algorithm = JoinAlgorithm(algorithm_type, data_preprocessor, output_path, use_yannakakis)
             size_info = join_algorithm.get_info()
             runtime = join_algorithm.run()
-            join_information[f"{algorithm_type}_{'yannakis' if use_yannakis else 'no_yannakis'}"] = (size_info, runtime)
+            join_information[f"{algorithm_type}_{'yannakakis' if use_yannakakis else 'no_yannakakis'}"] = (size_info, runtime)
